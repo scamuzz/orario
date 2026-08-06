@@ -156,17 +156,18 @@ app.get('/api/treno/:origine/:numero', async (req, res) => {
  * Ricerca soluzioni di viaggio tramite leFrecce.
  * Body: { originId, originName, destId, destName, date, time }
  *   date: "YYYY-MM-DD", time: "HH:MM"
+ * Payload inviato a leFrecce: { departureLocationId, arrivalLocationId, departureTime, ... }
  */
 app.post('/api/soluzioni', async (req, res) => {
   const { originId, originName, destId, destName, date, time } = req.body || {};
   if (!originId || !destId || !date) {
     return res.status(400).json({ error: 'Parametri mancanti: originId, destId, date richiesti.' });
   }
-  const departureDate = `${date}T${time || '00:00'}:00`;
+  const departureTime = `${date}T${time || '00:00'}:00`;
   const payload = {
-    origin: { id: Number(originId), name: originName || '' },
-    destination: { id: Number(destId), name: destName || '' },
-    departureDate,
+    departureLocationId: Number(originId),
+    arrivalLocationId: Number(destId),
+    departureTime,
     adults: 1,
     children: 0,
     criteria: { frecceOnly: false, regionalOnly: false, noChanges: false },
