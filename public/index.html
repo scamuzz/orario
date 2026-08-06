@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orario Treni – Trenitalia &amp; Trenord</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">🚆 Orario Treni</div>
+    <p class="subtitle">Trenitalia &amp; Trenord – informazioni in tempo reale</p>
+  </header>
+
+  <main>
+    <!-- ── Tabs ── -->
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="soluzioni" role="tab" aria-selected="true">Cerca Treno</button>
+      <button class="tab" data-tab="partenze" role="tab" aria-selected="false">Partenze</button>
+      <button class="tab" data-tab="arrivi" role="tab" aria-selected="false">Arrivi</button>
+      <button class="tab" data-tab="numero" role="tab" aria-selected="false">Stato Treno</button>
+    </nav>
+
+    <!-- ── Cerca soluzioni ── -->
+    <section id="tab-soluzioni" class="tab-panel active">
+      <form id="form-soluzioni" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="orig-input">Stazione di partenza</label>
+            <div class="autocomplete-wrap">
+              <input id="orig-input" type="text" placeholder="es. Milano Centrale" autocomplete="off" required />
+              <ul id="orig-list" class="autocomplete-list hidden"></ul>
+            </div>
+            <input type="hidden" id="orig-id" />
+          </div>
+          <div class="form-group">
+            <label for="dest-input">Stazione di arrivo</label>
+            <div class="autocomplete-wrap">
+              <input id="dest-input" type="text" placeholder="es. Roma Termini" autocomplete="off" required />
+              <ul id="dest-list" class="autocomplete-list hidden"></ul>
+            </div>
+            <input type="hidden" id="dest-id" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="data-input">Data</label>
+            <input id="data-input" type="date" required />
+          </div>
+          <div class="form-group">
+            <label for="ora-input">Orario</label>
+            <input id="ora-input" type="time" required />
+          </div>
+          <div class="form-group btn-wrap">
+            <button type="submit" class="btn-primary">Cerca</button>
+          </div>
+        </div>
+      </form>
+      <div id="sol-results" class="results-area"></div>
+    </section>
+
+    <!-- ── Partenze ── -->
+    <section id="tab-partenze" class="tab-panel hidden">
+      <form id="form-partenze" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="part-input">Stazione</label>
+            <div class="autocomplete-wrap">
+              <input id="part-input" type="text" placeholder="es. Torino Porta Nuova" autocomplete="off" required />
+              <ul id="part-list" class="autocomplete-list hidden"></ul>
+            </div>
+            <input type="hidden" id="part-id" />
+          </div>
+          <div class="form-group btn-wrap">
+            <button type="submit" class="btn-primary">Vedi Partenze</button>
+          </div>
+        </div>
+      </form>
+      <div id="part-results" class="results-area"></div>
+    </section>
+
+    <!-- ── Arrivi ── -->
+    <section id="tab-arrivi" class="tab-panel hidden">
+      <form id="form-arrivi" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="arr-input">Stazione</label>
+            <div class="autocomplete-wrap">
+              <input id="arr-input" type="text" placeholder="es. Venezia Santa Lucia" autocomplete="off" required />
+              <ul id="arr-list" class="autocomplete-list hidden"></ul>
+            </div>
+            <input type="hidden" id="arr-id" />
+          </div>
+          <div class="form-group btn-wrap">
+            <button type="submit" class="btn-primary">Vedi Arrivi</button>
+          </div>
+        </div>
+      </form>
+      <div id="arr-results" class="results-area"></div>
+    </section>
+
+    <!-- ── Stato Treno per numero ── -->
+    <section id="tab-numero" class="tab-panel hidden">
+      <form id="form-numero" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="num-input">Numero Treno</label>
+            <input id="num-input" type="text" placeholder="es. 9631" required />
+          </div>
+          <div class="form-group btn-wrap">
+            <button type="submit" class="btn-primary">Cerca Treno</button>
+          </div>
+        </div>
+      </form>
+      <div id="num-results" class="results-area"></div>
+    </section>
+  </main>
+
+  <!-- ── Modal dettaglio treno ── -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Dettaglio Treno</h2>
+        <button id="modal-close" aria-label="Chiudi">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Dati forniti da <a href="https://www.viaggiatreno.it" target="_blank" rel="noopener">ViaggiaTreno</a> (Trenitalia) e <a href="https://www.lefrecce.it" target="_blank" rel="noopener">leFrecce</a>. Solo per uso personale.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
