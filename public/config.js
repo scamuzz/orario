@@ -5,4 +5,4 @@
      window.API_BASE = 'https://<nome-app>.onrender.com';
    ============================================================ */
 
-window.API_BASE = 'https://orario-treni-api.onrender.com';
+window.API_BASE = '';
