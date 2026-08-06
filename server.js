@@ -162,14 +162,16 @@ app.post('/api/soluzioni', async (req, res) => {
   if (!originId || !destId || !date) {
     return res.status(400).json({ error: 'Parametri mancanti: originId, destId, date richiesti.' });
   }
+  const departureDate = `${date}T${time || '00:00'}:00`;
   const payload = {
-    origin: { id: originId, name: originName || '' },
-    destination: { id: destId, name: destName || '' },
-    arflag: 'A',
-    adate: date,
-    atime: time || '00:00',
+    origin: { id: Number(originId), name: originName || '' },
+    destination: { id: Number(destId), name: destName || '' },
+    departureDate,
+    adults: 1,
+    children: 0,
+    criteria: { frecceOnly: false, regionalOnly: false, noChanges: false },
   };
-  const url = `${LEFRECCE}/timetable/search`;
+  const url = `${LEFRECCE}/solutions/search`;
   return proxyPost(url, payload, res);
 });
 
