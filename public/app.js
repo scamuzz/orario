@@ -50,7 +50,8 @@ function errHtml(msg) {
 }
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, opts);
+  const base = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE : '';
+  const res = await fetch(base + path, opts);
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
     throw new Error(j.error || `Errore HTTP ${res.status}`);

@@ -45,6 +45,36 @@ npm start
 
 Richiede Node.js ≥ 16.
 
+## Deploy pubblico (GitHub Pages + Render)
+
+Il frontend statico viene pubblicato su **GitHub Pages** e il backend Express su **Render** (piano gratuito).
+
+### 1 – Backend su Render
+
+1. Crea un account su [render.com](https://render.com) e collega il repository GitHub.
+2. Render rileva `render.yaml` e crea automaticamente il servizio `orario-treni-api`.
+3. Nota l'URL del servizio, ad esempio `https://orario-treni-api.onrender.com`.
+
+### 2 – Imposta l'URL del backend nel frontend
+
+Apri `public/config.js` e imposta `API_BASE` con l'URL del servizio Render:
+
+```js
+window.API_BASE = 'https://orario-treni-api.onrender.com';
+```
+
+Fai commit e push su `main`.
+
+### 3 – Abilita GitHub Pages
+
+1. Vai su **Settings → Pages** del repository.
+2. In **Source** seleziona **GitHub Actions**.
+3. Il workflow `.github/workflows/deploy.yml` pubblica automaticamente la cartella `public/` su ogni push a `main`.
+
+Il sito sarà disponibile su `https://scamuzz.github.io/orario`.
+
+---
+
 ## Fonti dati
 
 - [ViaggiaTreno](http://www.viaggiatreno.it/) – API non ufficiale Trenitalia
