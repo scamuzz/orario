@@ -19,6 +19,16 @@ function fmtDate(iso) {
   return d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
 }
 
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function delayBadge(min) {
   if (min == null) return '<span class="badge badge-gray">–</span>';
   if (min === 0) return '<span class="badge badge-green">In orario</span>';
@@ -246,17 +256,17 @@ function renderSoluzioni(data, out, origVtId, destVtId) {
     const durFmt = durLabel(dur);
 
     return `
-      <div class="sol-card" data-sol='${JSON.stringify({ legs, dep, arr, origVtId, destVtId })}'>
+      <div class="sol-card" data-sol='${esc(JSON.stringify({ legs, dep, arr, origVtId, destVtId }))}'>
         <div class="sol-times">
-          <span class="sol-dep">${depFmt}</span>
+          <span class="sol-dep">${esc(depFmt)}</span>
           <span style="color:var(--border)">↓</span>
-          <span class="sol-arr">${arrFmt}</span>
+          <span class="sol-arr">${esc(arrFmt)}</span>
         </div>
         <span class="sol-arrow">→</span>
         <div class="sol-info">
-          <div class="sol-train">${trainLabel || 'Treno'}</div>
+          <div class="sol-train">${esc(trainLabel) || 'Treno'}</div>
           <div class="sol-changes">
-            ${durFmt}${changes !== '–' ? ` · ${changes === 0 ? 'Diretto' : changes + ' cambio/i'}` : ''}
+            ${esc(durFmt)}${changes !== '–' ? ` · ${changes === 0 ? 'Diretto' : esc(String(changes)) + ' cambio/i'}` : ''}
             ${price}
           </div>
         </div>
@@ -358,13 +368,13 @@ function renderTrainTable(trains, out, type, stationName) {
       : `<span class="${delayClass(delay)}">${delay != null ? (delay === 0 ? 'In orario' : (delay > 0 ? `+${delay} min` : `${delay} min`)) : '–'}</span>`;
 
     const platformCell = platformReal && platformReal !== platform
-      ? `${platform} → <strong>${platformReal}</strong>`
-      : platform;
+      ? `${esc(platform)} → <strong>${esc(platformReal)}</strong>`
+      : esc(platform);
 
     return `<tr>
-      <td class="clickable" data-num="${num}" data-orig="${codOrigine}">${num}</td>
-      <td>${dest}</td>
-      <td>${timeScheduled}</td>
+      <td class="clickable" data-num="${esc(num)}" data-orig="${esc(codOrigine)}">${esc(num)}</td>
+      <td>${esc(dest)}</td>
+      <td>${esc(timeScheduled)}</td>
       <td>${delayCell}</td>
       <td>${platformCell}</td>
     </tr>`;
@@ -372,7 +382,7 @@ function renderTrainTable(trains, out, type, stationName) {
 
   out.innerHTML = `
     <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:8px">
-      ${type === 'partenze' ? 'Partenze da' : 'Arrivi a'} <strong>${stationName}</strong> – ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+      ${type === 'partenze' ? 'Partenze da' : 'Arrivi a'} <strong>${esc(stationName)}</strong> – ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
       &nbsp;<button class="btn-secondary" id="refresh-btn">↻ Aggiorna</button>
     </p>
     <div style="overflow-x:auto">
@@ -475,22 +485,22 @@ function renderTrainDetail(t) {
     : '<span style="color:var(--text-muted)">–</span>';
 
   const lastUpdate = t.oraUltimoRilevamento
-    ? `<span style="font-size:.82rem;color:var(--text-muted)">Ultimo rilevamento: <strong>${t.stazioneUltimoRilevamento || ''}</strong> ore ${fmt(t.oraUltimoRilevamento)}</span>`
+    ? `<span style="font-size:.82rem;color:var(--text-muted)">Ultimo rilevamento: <strong>${esc(t.stazioneUltimoRilevamento || '')}</strong> ore ${esc(fmt(t.oraUltimoRilevamento))}</span>`
     : '';
 
   const header = `
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1.5px solid var(--border)">
       <div>
         <span style="font-size:.82rem;color:var(--text-muted)">Categoria</span><br>
-        <strong>${t.categoriaDescrizione || t.categoria || '–'}</strong>
+        <strong>${esc(t.categoriaDescrizione || t.categoria || '–')}</strong>
       </div>
       <div>
         <span style="font-size:.82rem;color:var(--text-muted)">Da</span><br>
-        <strong>${t.origine || '–'}</strong>
+        <strong>${esc(t.origine || '–')}</strong>
       </div>
       <div>
         <span style="font-size:.82rem;color:var(--text-muted)">A</span><br>
-        <strong>${t.destinazione || '–'}</strong>
+        <strong>${esc(t.destinazione || '–')}</strong>
       </div>
       <div style="margin-left:auto">
         <span style="font-size:.82rem;color:var(--text-muted)">Ritardo</span><br>
@@ -503,20 +513,20 @@ function renderTrainDetail(t) {
     const passed = f.effettivo || f.partenzaReale || f.arrivoReale;
     const isCurrent = t.stazioneUltimoRilevamento === f.stazione;
     const dotClass = isCurrent ? 'current' : (passed ? 'passed' : '');
-    const sched = fmt(f.partenza || f.arrivo);
-    const actual = fmt(f.partenzaReale || f.arrivoReale);
+    const sched = esc(fmt(f.partenza || f.arrivo));
+    const actual = esc(fmt(f.partenzaReale || f.arrivoReale));
     const binario = f.binarioProgrammatoPartenzaDescrizione || f.binarioProgrammatoArrivoDescrizione || '';
     const binarioReal = f.binarioEffettivoPartenzaDescrizione || f.binarioEffettivoArrivoDescrizione || '';
 
     return `<li class="stop-item">
       <div class="stop-dot ${dotClass}"></div>
       <div style="flex:1">
-        <div class="stop-name">${f.stazione || '–'}</div>
+        <div class="stop-name">${esc(f.stazione || '–')}</div>
         <div class="stop-times">
           <span>Prev: ${sched}</span>
           ${actual && actual !== sched ? `<span style="color:var(--accent)">Eff: ${actual}</span>` : ''}
         </div>
-        ${binario ? `<span class="stop-platform">Bin. ${binarioReal && binarioReal !== binario ? `${binario}→<strong>${binarioReal}</strong>` : binario}</span>` : ''}
+        ${binario ? `<span class="stop-platform">Bin. ${binarioReal && binarioReal !== binario ? `${esc(binario)}→<strong>${esc(binarioReal)}</strong>` : esc(binario)}</span>` : ''}
       </div>
     </li>`;
   });
