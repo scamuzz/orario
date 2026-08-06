@@ -2,6 +2,7 @@
 
 const express = require('express');
 const fetch = require('node-fetch');
+const cors = require('cors');
 const path = require('path');
 
 const app = express();
@@ -61,7 +62,8 @@ async function proxyPost(url, payload, res) {
   }
 }
 
-// ─── Static frontend ──────────────────────────────────────────────────────────
+// ─── Middleware ───────────────────────────────────────────────────────────────
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
