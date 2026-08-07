@@ -165,12 +165,15 @@ app.post('/api/soluzioni', async (req, res) => {
   }
   const departureTime = `${date}T${time || '00:00'}:00`;
   const payload = {
-    departureLocationId: Number(originId),
-    arrivalLocationId: Number(destId),
-    departureTime,
+    origin: { id: Number(originId), name: originName || '' },
+    destination: { id: Number(destId), name: destName || '' },
+    arflag: 'A',
     adults: 1,
     children: 0,
-    criteria: { frecceOnly: false, regionalOnly: false, noChanges: false },
+    frecceOnly: false,
+    date: departureTime,
+    returnDate: null,
+    solutions: 10,
   };
   const url = `${LEFRECCE}/solutions/search`;
   return proxyPost(url, payload, res);
