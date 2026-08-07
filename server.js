@@ -432,8 +432,8 @@ app.get('/api/soluzioni-vt', async (req, res) => {
   if (!orig || !dest || !date) {
     return res.status(400).json({ error: 'Parametri mancanti: orig, dest, date richiesti.' });
   }
-  const dt = `${date}T${(time || '00:00')}:00`;
-  const url = `${VIAGGIATRENO}/soluzioniViaggioNew/${encodeURIComponent(orig)}/${encodeURIComponent(dest)}/${dt}`;
+  const ts = new Date(`${date}T${(time || '00:00')}:00`).getTime();
+  const url = `${VIAGGIATRENO}/soluzioniViaggioNew/${encodeURIComponent(orig)}/${encodeURIComponent(dest)}/${ts}`;
   return proxyGet(url, res);
 });
 
