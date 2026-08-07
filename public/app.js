@@ -98,7 +98,10 @@ function setupAutocomplete({ inputEl, listEl, hiddenEl, onSelect }) {
 
   async function fetchSuggestions(q) {
     try {
-      const data = await api(`/api/stazioni?q=${encodeURIComponent(q)}`);
+      let data = await api(`/api/trenord/stazioni?q=${encodeURIComponent(q)}`);
+      if (!data.length) {
+        data = await api(`/api/stazioni?q=${encodeURIComponent(q)}`);
+      }
       items = data.slice(0, 8);
       render();
     } catch (_) { hide(); }
