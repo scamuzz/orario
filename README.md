@@ -77,8 +77,34 @@ Il sito sarà disponibile su `https://scamuzz.github.io/orario`.
 
 ## Fonti dati
 
-- [ViaggiaTreno](http://www.viaggiatreno.it/) – API non ufficiale Trenitalia
-- [leFrecce](https://www.lefrecce.it/) – API non ufficiale Trenitalia/Trenord
+- [e015 Regione Lombardia – Trenord GTFS](https://www.e015.regione.lombardia.it/site/api-detail?id=382) – API ufficiale GTFS static + real-time (richiede credenziali)
+- [ViaggiaTreno](http://www.viaggiatreno.it/) – API non ufficiale Trenitalia (fallback)
+- [leFrecce](https://www.lefrecce.it/) – API non ufficiale Trenitalia/Trenord (fallback)
 
-> ⚠️ Le API non sono documentate ufficialmente e possono cambiare senza preavviso.
+> ⚠️ Le API non ufficiali non sono documentate e possono cambiare senza preavviso.
 > Utilizzare solo per uso personale o di test.
+
+## Integrazione GTFS e015 (Trenord)
+
+Il server supporta i feed GTFS ufficiali di Trenord tramite il portale e015 di Regione Lombardia.
+Configurare le seguenti variabili d'ambiente:
+
+| Variabile | Descrizione |
+|-----------|-------------|
+| `TRENORD_API_KEY` | API key ottenuta registrandosi su e015.regione.lombardia.it |
+| `TRENORD_GTFS_STATIC_URL` | URL del feed GTFS statico (ZIP) dell'API e015 #382 |
+| `TRENORD_GTFS_RT_URL` | URL del feed GTFS real-time (Protobuf) dell'API e015 #382 |
+
+Se non configurate, il server usa automaticamente i fallback ViaggiaTreno/HAFAS.
+
+Il feed statico viene scaricato all'avvio e aggiornato ogni 24 ore in memoria.
+
+### Endpoint GTFS aggiunti
+
+| Endpoint | Descrizione |
+|----------|-------------|
+| `GET /api/gtfs/status` | Stato della cache GTFS e configurazione |
+| `GET /api/gtfs/stazioni?q=<nome>` | Autocomplete stazioni dal feed statico |
+| `GET /api/gtfs/partenze/:stopId` | Prossime partenze con dati real-time |
+| `GET /api/gtfs/arrivi/:stopId` | Prossimi arrivi con dati real-time |
+| `GET /api/gtfs/realtime` | Feed GTFS-RT decodificato come JSON |
