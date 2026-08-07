@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 // ─── Base URLs ───────────────────────────────────────────────────────────────
 const VIAGGIATRENO = 'http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno';
 const LEFRECCE = 'https://www.lefrecce.it/Channels.Website.BFF.WEB/website';
+const TRENORD_HAFAS = 'https://orari.trenord.it/hafas';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,71 @@ app.get('/api/stazioni/lefrecce', async (req, res) => {
   if (!q) return res.json([]);
   const url = `${LEFRECCE}/locations/search?name=${encodeURIComponent(q)}&limit=${limit}`;
   return proxyGet(url, res);
+});
+
+/**
+ * GET /api/trenord/stazioni?q=<nome>
+ * Autocomplete stazioni via HAFAS Trenord (orari.trenord.it).
+ * Restituisce array di { nome, id } dove id è il codice VT (S…) ottenuto
+ * per cross-reference con ViaggiaTreno, oppure il codice HAFAS se il VT
+ * non risponde.
+ */
+app.get('/api/trenord/stazioni', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
+
+  const hafasUrl = `${TRENORD_HAFAS}/query.exe/dny?getstop.y=1&S=${encodeURIComponent(q)}&js=true&tpl=suggest2json&look_maxno=15&performLocating=2&noSession=yes`;
+  const vtUrl = `${VIAGGIATRENO}/autocompletaStazione/${encodeURIComponent(q.toUpperCase())}`;
+
+  const [hafasResult, vtResult] = await Promise.allSettled([
+    fetch(hafasUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OrarioTreni/1.0)', Accept: '*/*' },
+      timeout: 8000,
+    }).then((r) => r.text()),
+    fetch(vtUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/plain, */*' },
+      timeout: 8000,
+    }).then((r) => r.text()),
+  ]);
+
+  // Parse ViaggiaTreno autocomplete → Map<UPPERCASE_NAME, vtId>
+  const vtMap = new Map();
+  if (vtResult.status === 'fulfilled') {
+    vtResult.value
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const [nome, id] = line.split('|');
+        if (nome && id) vtMap.set(nome.trim().toUpperCase(), id.trim());
+      });
+  }
+
+  // Parse HAFAS JSONP → TSLs.map({...})
+  if (hafasResult.status === 'fulfilled') {
+    const m = hafasResult.value.match(/TSLs\.map\s*\(([\s\S]*)\)/);
+    if (m) {
+      try {
+        const data = JSON.parse(m[1]);
+        const stations = (data.suggestions || [])
+          .filter((s) => s.extId || s.id)
+          .map((s) => {
+            const nome = s.value || s.name || '';
+            const vtId = vtMap.get(nome.toUpperCase());
+            return { nome, id: vtId || s.extId || s.id };
+          })
+          .filter((s) => s.id);
+        if (stations.length) return res.json(stations);
+      } catch (_) { /* fall through */ }
+    }
+  }
+
+  // Fallback: return ViaggiaTreno results directly
+  const vtStations = [];
+  for (const [nome, id] of vtMap) {
+    vtStations.push({ nome, id });
+  }
+  return res.json(vtStations.slice(0, 8));
 });
 
 /**
