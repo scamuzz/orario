@@ -180,6 +180,20 @@ app.post('/api/soluzioni', async (req, res) => {
 });
 
 /**
+ * GET /api/soluzioni-vt?orig=<id>&dest=<id>&date=<YYYY-MM-DD>&time=<HH:MM>
+ * Ricerca soluzioni di viaggio tramite ViaggiaTreno (soluzioniViaggioNew).
+ */
+app.get('/api/soluzioni-vt', async (req, res) => {
+  const { orig, dest, date, time } = req.query;
+  if (!orig || !dest || !date) {
+    return res.status(400).json({ error: 'Parametri mancanti: orig, dest, date richiesti.' });
+  }
+  const dt = `${date}T${(time || '00:00')}:00`;
+  const url = `${VIAGGIATRENO}/soluzioniViaggioNew/${encodeURIComponent(orig)}/${encodeURIComponent(dest)}/${encodeURIComponent(dt)}`;
+  return proxyGet(url, res);
+});
+
+/**
  * GET /api/treno/info/:numeroTreno
  * Cerca informazioni base del treno per numero (ViaggiaTreno cerca stazione origine).
  */

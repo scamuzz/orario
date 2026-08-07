@@ -182,11 +182,13 @@ document.getElementById('form-soluzioni').addEventListener('submit', async (e) =
     out.innerHTML = errHtml('Compila tutti i campi richiesti.');
     return;
   }
+  if (!origId || !destId) {
+    out.innerHTML = errHtml('Seleziona le stazioni dall\'elenco suggerito.');
+    return;
+  }
 
   out.innerHTML = loading('Ricerca soluzioni...');
 
-  // Strategy: try leFrecce first (needs numeric IDs), then fall back to
-  // ViaggiaTreno partenze/arrivi union strategy.
   try {
     await searchSoluzioni({ origId, origInput, destId, destInput, date, time, out });
   } catch (err) {
@@ -195,7 +197,20 @@ document.getElementById('form-soluzioni').addEventListener('submit', async (e) =
 });
 
 async function searchSoluzioni({ origId, origInput, destId, destInput, date, time, out }) {
-  // ── Step 1: resolve leFrecce IDs ──
+  // ── Strategy 1: ViaggiaTreno soluzioniViaggioNew (uses VT station IDs already known) ──
+  if (origId && destId) {
+    try {
+      const data = await api(
+        `/api/soluzioni-vt?orig=${encodeURIComponent(origId)}&dest=${encodeURIComponent(destId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time || '00:00')}`
+      );
+      renderSoluzioniVT(data, out, origId, destId);
+      return;
+    } catch (_) {
+      // fall through to leFrecce
+    }
+  }
+
+  // ── Strategy 2: leFrecce (resolve numeric IDs first) ──
   const [origResults, destResults] = await Promise.all([
     api(`/api/stazioni/lefrecce?q=${encodeURIComponent(origInput)}&limit=3`).catch(() => []),
     api(`/api/stazioni/lefrecce?q=${encodeURIComponent(destInput)}&limit=3`).catch(() => []),
@@ -205,7 +220,7 @@ async function searchSoluzioni({ origId, origInput, destId, destInput, date, tim
   const dest = destResults[0];
 
   if (!orig || !dest) {
-    out.innerHTML = errHtml('Impossibile trovare le stazioni su leFrecce. Verifica i nomi inseriti.');
+    out.innerHTML = errHtml('Nessuna soluzione trovata. Assicurati di selezionare le stazioni dall\'elenco suggerito.');
     return;
   }
 
@@ -225,6 +240,67 @@ async function searchSoluzioni({ origId, origInput, destId, destInput, date, tim
   });
 
   renderSoluzioni(data, out, origId || '', destId || '');
+}
+
+function renderSoluzioniVT(data, out, origVtId, destVtId) {
+  // ViaggiaTreno returns { soluzioni: [...] } or an array directly
+  const raw = Array.isArray(data) ? data : (data.soluzioni || []);
+
+  if (!raw.length) {
+    out.innerHTML = errHtml('Nessuna soluzione trovata per i parametri inseriti.');
+    return;
+  }
+
+  const cards = raw.map((sol) => {
+    const dep = sol.orarioPartenza;
+    const arr = sol.orarioArrivo;
+    const dur = sol.durata || '';
+    const vehicles = sol.vehicles || [];
+    const changes = vehicles.length > 1 ? vehicles.length - 1 : 0;
+
+    const trainLabel = vehicles
+      .map((v) => [v.categoriaDescrizione, v.numeroTreno].filter(Boolean).join(' '))
+      .filter(Boolean)
+      .join(' + ') || 'Treno';
+
+    const depFmt = fmt(dep);
+    const arrFmt = fmt(arr);
+    const durFmt = durLabel(dur);
+
+    const legs = vehicles.map((v) => ({
+      trainidentifier: v.numeroTreno || '',
+      trainId: v.numeroTreno || '',
+      codOrigine: origVtId,
+    }));
+
+    return `
+      <div class="sol-card" data-sol='${esc(JSON.stringify({ legs, dep, arr, origVtId, destVtId }))}'>
+        <div class="sol-times">
+          <span class="sol-dep">${esc(depFmt)}</span>
+          <span style="color:var(--border)">↓</span>
+          <span class="sol-arr">${esc(arrFmt)}</span>
+        </div>
+        <span class="sol-arrow">→</span>
+        <div class="sol-info">
+          <div class="sol-train">${esc(trainLabel)}</div>
+          <div class="sol-changes">
+            ${esc(durFmt)}${changes > 0 ? ` · ${changes} cambio/i` : ' · Diretto'}
+          </div>
+        </div>
+        <div class="sol-status">
+          <span class="badge badge-gray">Cerca stato</span>
+        </div>
+      </div>`;
+  });
+
+  out.innerHTML = `<div class="sol-grid">${cards.join('')}</div>`;
+
+  out.querySelectorAll('.sol-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const info = JSON.parse(card.dataset.sol);
+      openSolDetailModal(info);
+    });
+  });
 }
 
 function renderSoluzioni(data, out, origVtId, destVtId) {
