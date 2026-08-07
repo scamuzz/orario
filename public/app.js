@@ -98,11 +98,19 @@ function setupAutocomplete({ inputEl, listEl, hiddenEl, onSelect }) {
 
   async function fetchSuggestions(q) {
     try {
-      let data = await api(`/api/trenord/stazioni?q=${encodeURIComponent(q)}`);
-      if (!data.length) {
-        data = await api(`/api/stazioni?q=${encodeURIComponent(q)}`);
+      // 1. Try GTFS static stops (e015 Trenord feed)
+      let data = await api(`/api/gtfs/stazioni?q=${encodeURIComponent(q)}&limit=8`).catch(() => []);
+      if (data && !data.retry && data.length) {
+        items = data.slice(0, 8).map((s) => ({ ...s, _source: 'gtfs' }));
+        render();
+        return;
       }
-      items = data.slice(0, 8);
+      // 2. Fallback: Trenord HAFAS / ViaggiaTreno
+      let vtData = await api(`/api/trenord/stazioni?q=${encodeURIComponent(q)}`).catch(() => []);
+      if (!vtData.length) {
+        vtData = await api(`/api/stazioni?q=${encodeURIComponent(q)}`).catch(() => []);
+      }
+      items = vtData.slice(0, 8).map((s) => ({ ...s, _source: 'vt' }));
       render();
     } catch (_) { hide(); }
   }
@@ -124,6 +132,8 @@ function setupAutocomplete({ inputEl, listEl, hiddenEl, onSelect }) {
   function selectItem(s) {
     inputEl.value = s.nome;
     if (hiddenEl) hiddenEl.value = s.id;
+    // Store source so submit handlers can choose the right API
+    inputEl.dataset.source = s._source || 'vt';
     hide();
     if (onSelect) onSelect(s);
   }
@@ -389,12 +399,18 @@ document.getElementById('form-partenze').addEventListener('submit', async (e) =>
   e.preventDefault();
   const id = document.getElementById('part-id').value;
   const nome = document.getElementById('part-input').value.trim();
+  const source = document.getElementById('part-input').dataset.source || 'vt';
   const out = document.getElementById('part-results');
   if (!id) { out.innerHTML = errHtml('Seleziona una stazione dall\'elenco.'); return; }
   out.innerHTML = loading('Caricamento partenze...');
   try {
-    const data = await api(`/api/partenze/${encodeURIComponent(id)}`);
-    renderTrainTable(data, out, 'partenze', nome);
+    if (source === 'gtfs') {
+      const data = await api(`/api/gtfs/partenze/${encodeURIComponent(id)}`);
+      renderGtfsTable(data, out, 'partenze', nome, id);
+    } else {
+      const data = await api(`/api/partenze/${encodeURIComponent(id)}`);
+      renderTrainTable(data, out, 'partenze', nome);
+    }
   } catch (err) {
     out.innerHTML = errHtml(err.message);
   }
@@ -412,16 +428,82 @@ document.getElementById('form-arrivi').addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = document.getElementById('arr-id').value;
   const nome = document.getElementById('arr-input').value.trim();
+  const source = document.getElementById('arr-input').dataset.source || 'vt';
   const out = document.getElementById('arr-results');
   if (!id) { out.innerHTML = errHtml('Seleziona una stazione dall\'elenco.'); return; }
   out.innerHTML = loading('Caricamento arrivi...');
   try {
-    const data = await api(`/api/arrivi/${encodeURIComponent(id)}`);
-    renderTrainTable(data, out, 'arrivi', nome);
+    if (source === 'gtfs') {
+      const data = await api(`/api/gtfs/arrivi/${encodeURIComponent(id)}`);
+      renderGtfsTable(data, out, 'arrivi', nome, id);
+    } else {
+      const data = await api(`/api/arrivi/${encodeURIComponent(id)}`);
+      renderTrainTable(data, out, 'arrivi', nome);
+    }
   } catch (err) {
     out.innerHTML = errHtml(err.message);
   }
 });
+
+/** Render GTFS partenze/arrivi table (from /api/gtfs/* endpoints). */
+function renderGtfsTable(trains, out, type, stationName, stopId) {
+  if (!trains || !trains.length) {
+    out.innerHTML = errHtml('Nessun treno trovato per le prossime 2 ore.');
+    return;
+  }
+
+  const isPartenze = type === 'partenze';
+  const timeLabel = isPartenze ? 'Partenza' : 'Arrivo';
+
+  const rows = trains.map((t) => {
+    const route = [t.routeShortName, t.routeLongName].filter(Boolean).join(' – ') || '–';
+    const headsign = t.headsign || '–';
+    const scheduled = isPartenze ? t.departureTime : t.arrivalTime;
+    const realtime = isPartenze ? t.realtimeDepartureTime : t.realtimeArrivalTime;
+    const delay = t.delay;
+    const cancelled = t.cancelled;
+
+    const timeCell = realtime && realtime !== scheduled
+      ? `${fmt(scheduled)} <small style="color:var(--text-muted)">→ ${fmt(realtime)}</small>`
+      : fmt(scheduled);
+
+    const delayCell = cancelled
+      ? '<span class="badge badge-red">Cancellato</span>'
+      : delay != null
+        ? `<span class="${delayClass(delay)}">${delay === 0 ? 'In orario' : (delay > 0 ? `+${delay} min` : `${delay} min`)}</span>`
+        : '<span class="badge badge-gray">–</span>';
+
+    return `<tr>
+      <td>${esc(route)}</td>
+      <td>${esc(headsign)}</td>
+      <td>${timeCell}</td>
+      <td>${delayCell}</td>
+    </tr>`;
+  });
+
+  const refreshFn = () => {
+    out.innerHTML = loading('Aggiornamento...');
+    api(`/api/gtfs/${type}/${encodeURIComponent(stopId)}`)
+      .then((d) => renderGtfsTable(d, out, type, stationName, stopId))
+      .catch((err) => { out.innerHTML = errHtml(err.message); });
+  };
+
+  out.innerHTML = `
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:8px">
+      ${isPartenze ? 'Partenze da' : 'Arrivi a'} <strong>${esc(stationName)}</strong> – ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+      &nbsp;<button class="btn-secondary" id="refresh-btn-gtfs">↻ Aggiorna</button>
+    </p>
+    <div style="overflow-x:auto">
+    <table class="train-table">
+      <thead><tr>
+        <th>Linea</th><th>Direzione</th><th>${timeLabel}</th><th>Ritardo</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    </div>`;
+
+  out.querySelector('#refresh-btn-gtfs').addEventListener('click', refreshFn);
+}
 
 function renderTrainTable(trains, out, type, stationName) {
   if (!trains || !trains.length) {
