@@ -363,10 +363,9 @@ app.get('/api/trenord/stazioni', async (req, res) => {
  */
 app.get('/api/partenze/:id', async (req, res) => {
   const id = req.params.id;
-  // orario opzionale in formato ISO o timestamp; se non fornito usa "now"
   const now = new Date();
-  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
-  const url = `${VIAGGIATRENO}/partenze/${encodeURIComponent(id)}/${encodeURIComponent(ts)}`;
+  const ts = now.getTime();
+  const url = `${VIAGGIATRENO}/partenze/${encodeURIComponent(id)}/${ts}`;
   return proxyGet(url, res);
 });
 
@@ -377,8 +376,8 @@ app.get('/api/partenze/:id', async (req, res) => {
 app.get('/api/arrivi/:id', async (req, res) => {
   const id = req.params.id;
   const now = new Date();
-  const ts = now.toISOString().slice(0, 16).replace('T', ' ');
-  const url = `${VIAGGIATRENO}/arrivi/${encodeURIComponent(id)}/${encodeURIComponent(ts)}`;
+  const ts = now.getTime();
+  const url = `${VIAGGIATRENO}/arrivi/${encodeURIComponent(id)}/${ts}`;
   return proxyGet(url, res);
 });
 
